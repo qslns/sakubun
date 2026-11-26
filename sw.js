@@ -1,5 +1,5 @@
 /* 작문·면접 드릴 — 오프라인 저장. 페이지·자료는 네트워크 먼저(새 판이 바로 보이게), 음성·글꼴은 저장본 먼저. */
-const VERSION = "c37ed82729";
+const VERSION = "b662c0f215";
 const SHELL = "sakubun-shell-" + VERSION;
 const AUDIO = "sakubun-audio-1";
 const FONTS = "sakubun-fonts-1";
