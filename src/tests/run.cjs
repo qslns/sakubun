@@ -127,7 +127,7 @@ async function newPage(browser, vp, url, nowIso, state) {
   const errs = [];
   page.on("pageerror", e => errs.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/Failed to load resource|ERR_|net::/i.test(m.text())) errs.push("console: " + m.text()); });
-  await page.addInitScript(([n, st]) => { if (n) localStorage.setItem("sakubun-now", n); if (st && !localStorage.getItem("sakubun-v1")) localStorage.setItem("sakubun-v1", st); }, [nowIso, state || null]);
+  await page.addInitScript(([n, st]) => { if (n) localStorage.setItem("sakubun-now", n); if (st && !localStorage.getItem("sakubun-v5")) localStorage.setItem("sakubun-v5", st); }, [nowIso, state || null]);
   await page.goto(url, {waitUntil: "load"});
   return {ctx, page, errs};
 }
@@ -247,16 +247,16 @@ async function testResume(browser, url) {
   const pos2 = await page.evaluate(() => window.__sakubun.S().sess.pos);
   ok(pos2 === before.pos, "이어서 하기 → 같은 자리", pos2 + " vs " + before.pos);
   // 진도 코드 내보내기 → 새 브라우저에 가져오기
-  await page.goto(url + "#/set", {waitUntil: "load"});
+  await page.goto(url + "#/set", {waitUntil: "load"}); await page.waitForTimeout(150);
   await page.click('[data-act="exp"]');
   const code = await page.$eval("#code", el => el.value);
-  const stateA = await page.evaluate(() => localStorage.getItem("sakubun-v1"));
+  const stateA = await page.evaluate(() => localStorage.getItem("sakubun-v5"));
   const b = await newPage(browser, {width: 820, height: 1180}, url + "#/set", START + "T10:00:00");
   await b.page.click('[data-act="imp"]');
   await b.page.fill("#code", code);
   await b.page.click('[data-act="imp"]');
   await b.page.waitForFunction(() => location.hash === "#/" || location.hash === "");
-  const stateB = await b.page.evaluate(() => localStorage.getItem("sakubun-v1"));
+  const stateB = await b.page.evaluate(() => localStorage.getItem("sakubun-v5"));
   ok(stateA === stateB, "진도 코드로 옮긴 기록이 같음");
   ok(!!(await b.page.$('[data-act="resume"]')), "옮긴 브라우저에서도 '이어서 하기'");
   // 후리가나 끄기 → 유지
@@ -264,7 +264,7 @@ async function testResume(browser, url) {
   await b.page.reload({waitUntil: "load"});
   ok(await b.page.evaluate(() => document.body.classList.contains("nofuri")), "후리가나 끄기가 새로고침 뒤에도 유지");
   // 초기화
-  await b.page.goto(url + "#/set", {waitUntil: "load"});
+  await b.page.goto(url + "#/set", {waitUntil: "load"}); await b.page.waitForTimeout(150);
   await b.page.click('[data-act="reset"]'); await b.page.click('[data-act="reset"]');
   ok(await b.page.evaluate(() => { const S = window.__sakubun.S(); return !S.sess && !Object.keys(S.u).length && !Object.keys(S.w).length; }), "초기화하면 처음 상태");
   ok(errs.length === 0 && b.errs.length === 0, "이어서 하기·옮기기 · 스크립트 오류 0", errs.concat(b.errs).slice(0, 3).join(" | "));
@@ -278,8 +278,8 @@ async function testQ(browser, url, lateState) {
     return {n: D.qs.filter(q => q.rel !== "var").length, all: D.qs.length, cells: document.querySelectorAll(".qc").length, chains: document.querySelectorAll(".chain").length, nch: D.qch.length, tried: A.qTried(),
       heads: heads, mains: D.qch.map(c => c.main), cats: D.qch.map(c => c.cat).join(""), secs: document.querySelectorAll("main > .sec-h").length, low: D.qs.filter(q => q.low).length,
       orphan: D.qs.filter(q => q.par && !D.qs.some(p => p.id === q.par)).length}; });
-  ok(info.cells === info.n && info.n >= 100 && info.n <= 150, "예상 질문 전체 · 질문 칸 수 = 세는 질문 수(바꿔 묻는 말은 빼고)", info.cells + "/" + info.n + " (전체 " + info.all + ")");
-  ok(info.chains === info.nch && info.nch >= 20, "예상 질문 전체 · 묶음마다 한 덩이", info.chains + "/" + info.nch);
+  ok(info.cells === info.n && info.n >= 60 && info.n <= 120, "예상 질문 전체 · 질문 칸 수 = 세는 질문 수(바꿔 묻는 말은 빼고)", info.cells + "/" + info.n + " (전체 " + info.all + ")");
+  ok(info.chains === info.nch && info.nch >= 15, "예상 질문 전체 · 묶음마다 한 덩이", info.chains + "/" + info.nch);
   ok(JSON.stringify(info.heads) === JSON.stringify(info.mains), "예상 질문 전체 · 묶음의 첫 칸은 큰 질문");
   ok(/^A+B+C+D+$/.test(info.cats) && info.secs === 4, "예상 질문 전체 · 나올 확률이 높은 등급부터(A → B → C → D)", info.cats + " / " + info.secs);
   ok(info.low === 0 && info.orphan === 0, "예상 질문 · 뺀 질문이 남아 있지 않고, 꼬리 질문은 모두 앞 질문이 있음", info.low + "/" + info.orphan);
@@ -288,7 +288,7 @@ async function testQ(browser, url, lateState) {
   const chs = await page.evaluate(() => { const A = window.__sakubun, S = A.S(), c = A.D.qch[1]; const want = c.ids.filter(id => A.D.qs.find(q => q.id === id).rel !== "var");
     return {kind: S.sess && S.sess.kind, got: S.sess ? S.sess.steps.filter(s => s.t === "qa").map(s => s.q) : [], want: want}; });
   ok(chs.kind === "qs" && JSON.stringify(chs.got) === JSON.stringify(chs.want) && chs.want.length >= 3, "묶음 이어서 연습 · 큰 질문 → 이어지는 꼬리 질문 순서로 나옴", JSON.stringify(chs.got));
-  await page.evaluate(() => { const S = window.__sakubun.S(); S.sess = null; localStorage.setItem("sakubun-v1", JSON.stringify(S)); window.__sakubun.reload(); });
+  await page.evaluate(() => { const S = window.__sakubun.S(); S.sess = null; localStorage.setItem("sakubun-v5", JSON.stringify(S)); window.__sakubun.reload(); });
   // 면접 모의: 큰 질문 뒤에 그 묶음의 꼬리 질문이 이어짐
   const mk = await page.evaluate(() => { const A = window.__sakubun, Q = {}; A.D.qs.forEach(q => Q[q.id] = q); const out = [];
     for (let i = 0; i < 30; i++) { const seq = A.mockSeq(); if (!seq) { out.push({n: 0}); continue; }
@@ -297,7 +297,7 @@ async function testQ(browser, url, lateState) {
       out.push({n: seq.length, fu: fu, bad: bad, last: /質問はありますか/.test(Q[seq[seq.length - 1]].plain), dup: new Set(seq).size !== seq.length}); }
     return out; });
   ok(mk.every(m => m.n >= 6 && m.n <= 9 && m.fu >= 2 && m.bad === 0 && m.last && !m.dup), "면접 모의 · 큰 질문 3개 + 이어지는 질문, 마지막은 '질문 있습니까' (30번 뽑아 봄)", JSON.stringify(mk.filter(m => !(m.n >= 6 && m.n <= 9 && m.fu >= 2 && m.bad === 0 && m.last && !m.dup)).slice(0, 3)));
-  await page.goto(url + "#/q", {waitUntil: "load"}); await page.waitForSelector(".chain .qc");   // 주소 끝(#)만 바뀌는 이동은 화면이 바뀔 때까지 기다림
+  await page.goto(url + "#/q", {waitUntil: "load"}); await page.waitForTimeout(150); await page.waitForSelector(".chain .qc");   // 주소 끝(#)만 바뀌는 이동은 화면이 바뀔 때까지 기다림
   // 질문 하나: 듣기 → 답 보기 → 답했음 → 다음 안 해 본 질문으로
   const first = await page.evaluate(() => { const A = window.__sakubun, S = A.S(); return A.D.qs.filter(q => q.rel !== "var" && !(S.q[q.id] && S.q[q.id].n))[0].id; });
   await page.click('.qc[href="#/q/' + first + '"]');
@@ -311,34 +311,34 @@ async function testQ(browser, url, lateState) {
   await page.click('[data-act="qv-show"]'); await page.click('[data-act="qv-ng"]');
   const ng = await page.evaluate(() => { const S = window.__sakubun.S(); return Object.keys(S.q).filter(k => S.q[k].ok === 0).length; });
   ok(ng >= 1, "질문 하나 · 막혔음 → 막힌 질문으로 기록", String(ng));
-  await page.goto(url + "#/q", {waitUntil: "load"}); await page.waitForSelector(".chain .qc");   // 주소 끝(#)만 바뀌는 이동은 화면이 바뀔 때까지 기다림
+  await page.goto(url + "#/q", {waitUntil: "load"}); await page.waitForTimeout(150); await page.waitForSelector(".chain .qc");   // 주소 끝(#)만 바뀌는 이동은 화면이 바뀔 때까지 기다림
   ok(await page.evaluate(() => document.querySelectorAll(".qc.ok").length >= 1 && document.querySelectorAll(".qc.ng").length >= 1), "예상 질문 전체 · 칸에 답했음·막혔음이 표시됨");
   // 안 해 본 질문 10개 → 한 판
   await page.click('[data-act="qs-go"][data-k="new"]');
   const sess = await page.evaluate(() => { const S = window.__sakubun.S(); return S.sess ? {kind: S.sess.kind, n: S.sess.steps.length - 1, t: S.sess.steps[0].t} : null; });
   ok(sess && sess.kind === "qs" && sess.n === 10 && sess.t === "qa", "안 해 본 질문 10개 → 예상 질문 한 판", JSON.stringify(sess));
-  await page.evaluate(() => { const S = window.__sakubun.S(); S.sess = null; localStorage.setItem("sakubun-v1", JSON.stringify(S)); window.__sakubun.reload(); });
+  await page.evaluate(() => { const S = window.__sakubun.S(); S.sess = null; localStorage.setItem("sakubun-v5", JSON.stringify(S)); window.__sakubun.reload(); });
   // 질문 목소리 설정
   const getVoice = () => page.evaluate(() => { const A = window.__sakubun, q = A.D.qs[0]; return {btn: document.querySelector('.qbox [data-act="play"]').dataset.au, k: q.auk, n: q.au}; });
-  await page.goto(url + "#/q/A01", {waitUntil: "load"});
+  await page.goto(url + "#/q/A01", {waitUntil: "load"}); await page.waitForTimeout(150); await page.waitForSelector('.qbox [data-act="play"]');
   const v0 = await getVoice();
   ok(v0.btn === v0.k && v0.k !== v0.n, "질문 목소리 기본은 게이타", JSON.stringify(v0));
-  await page.goto(url + "#/set", {waitUntil: "load"});
+  await page.goto(url + "#/set", {waitUntil: "load"}); await page.waitForTimeout(150);
   await page.click('[data-act="set-qv"][data-v="n"]');
-  await page.goto(url + "#/q/A01", {waitUntil: "load"});
+  await page.goto(url + "#/q/A01", {waitUntil: "load"}); await page.waitForTimeout(150); await page.waitForSelector('.qbox [data-act="play"]');
   const voice = await getVoice();
   ok(voice.btn === voice.n, "질문 목소리를 나나미로 바꾸면 질문 음성이 바뀜", JSON.stringify(voice));
   // 사실 확인
-  await page.goto(url + "#/fact", {waitUntil: "load"});
+  await page.goto(url + "#/fact", {waitUntil: "load"}); await page.waitForTimeout(150);
   const fx = await page.evaluate(() => document.querySelectorAll(".fx").length);
   ok(fx > 0, "사실 확인 · 확인이 필요한 문장이 나옴", String(fx));
   await page.click(".fx"); await page.click('[data-act="fx-copy"]');
   const out = await page.$eval("#fxout", el => el.value);
   ok(/다른 것 1개/.test(out) && /\[.+\]/.test(out), "사실 확인 · 표시한 것만 글로 뽑힘", out.slice(0, 80));
-  await page.goto(url + "#/log", {waitUntil: "load"});
+  await page.goto(url + "#/log", {waitUntil: "load"}); await page.waitForTimeout(150);
   ok(await page.evaluate(() => /기록/.test(document.querySelector("h1").textContent) && document.querySelectorAll(".rowl").length >= 8), "기록 화면이 열림");
   // 단어장 낱말 칩
-  await page.goto(url + "#/u/b1", {waitUntil: "load"});
+  await page.goto(url + "#/u/b1", {waitUntil: "load"}); await page.waitForTimeout(150);
   const chip = await page.$(".vc");
   ok(!!chip, "문장 아래에 단어장 낱말이 나옴");
   if (chip) { await chip.click(); ok(await page.evaluate(() => (document.querySelector(".vd").textContent || "").length > 3), "단어장 낱말을 누르면 읽기와 뜻이 나옴"); }
@@ -407,26 +407,26 @@ async function shots(browser, name, url, lateState) {
       else break;
     }
     await a.page.goto(url, {waitUntil: "load"}); await snap("home-day1");
-    await a.page.goto(url + "#/list", {waitUntil: "load"}); await snap("list");
-    await a.page.goto(url + "#/words", {waitUntil: "load"}); await snap("words");
-    await a.page.goto(url + "#/set", {waitUntil: "load"}); await snap("set");
+    await a.page.goto(url + "#/list", {waitUntil: "load"}); await a.page.waitForTimeout(150); await snap("list");
+    await a.page.goto(url + "#/words", {waitUntil: "load"}); await a.page.waitForTimeout(150); await snap("words");
+    await a.page.goto(url + "#/set", {waitUntil: "load"}); await a.page.waitForTimeout(150); await snap("set");
     await a.ctx.close();
     if (lateState) {
       const b = await newPage(browser, {width: w, height: h}, url, "2026-12-08T10:00:00", lateState);
       await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-home-1208.png"), fullPage: true});
       await setNow(b.page, "2026-12-11T10:00:00");
       await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-home-1211.png")});
-      await b.page.goto(url + "#/plan", {waitUntil: "load"});
+      await b.page.goto(url + "#/plan", {waitUntil: "load"}); await b.page.waitForTimeout(150);
       await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-plan.png"), fullPage: true});
       await b.page.goto(url, {waitUntil: "load"}); await setNow(b.page, "2026-12-08T10:00:00");
-      await b.page.goto(url + "#/free", {waitUntil: "load"});
+      await b.page.goto(url + "#/free", {waitUntil: "load"}); await b.page.waitForTimeout(150);
       await b.page.click('[data-act="fr"][data-k="essay"]'); await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-essay0.png")});
       await b.page.click('[data-act="e-start"]'); await b.page.waitForTimeout(1300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-essay1.png")});
       await b.page.click('[data-act="e-done"]'); await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-essay2.png"), fullPage: true});
       await b.page.click('[data-act="ok"]');
-      await b.page.goto(url + "#/free", {waitUntil: "load"});
+      await b.page.goto(url + "#/free", {waitUntil: "load"}); await b.page.waitForTimeout(150);
       await b.page.click('[data-act="fr"][data-k="asm"]'); await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-pick.png")});
-      await b.page.goto(url + "#/exam", {waitUntil: "load"}); await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-exam.png")});
+      await b.page.goto(url + "#/exam", {waitUntil: "load"}); await b.page.waitForTimeout(150); await b.page.waitForTimeout(300); await b.page.screenshot({path: path.join(SHOTS, name + "-" + label + "-exam.png")});
       await b.ctx.close();
     }
   }
@@ -472,7 +472,7 @@ async function testSW(browser, name) {
   await page.reload({waitUntil: "load"});
   const ctl = await page.evaluate(() => !!navigator.serviceWorker.controller);
   ok(ctl, name + " · 서비스 워커가 페이지를 맡음");
-  await page.goto(url + "#/set", {waitUntil: "load"});
+  await page.goto(url + "#/set", {waitUntil: "load"}); await page.waitForTimeout(150);
   await page.click('[data-act="dl"]');
   await page.waitForFunction(() => /다 받아 두었어요|받지 못한/.test(document.getElementById("dlmsg").textContent), null, {timeout: 120000});
   const msg = await page.$eval("#dlmsg", el => el.textContent);
@@ -501,7 +501,7 @@ async function testSW(browser, name) {
       // 12/7까지 표대로 진행한 상태를 뒤쪽 화면 검사에 씀
       const c = await newPage(browser, {width: 1180, height: 820}, url, START + "T10:00:00");
       await runDays(c.page, dayList(START, "2026-12-07"), 0.1, 11);
-      late = await c.page.evaluate(() => localStorage.getItem("sakubun-v1"));
+      late = await c.page.evaluate(() => localStorage.getItem("sakubun-v5"));
       await c.ctx.close();
     }
     if (WHAT === "all" || WHAT === "course") {

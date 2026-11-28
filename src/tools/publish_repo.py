@@ -5,7 +5,7 @@
   (그다음 저장소 폴더에서 git add -A · commit · push)
 
 - 사이트(site/) → 저장소 맨 위(GitHub Pages 가 main 의 / 를 그대로 내보냄)
-- 소스(src/) → 저장소 src/. 단, 문장 원본(c3_essay · c3_iv · c3_q)의 **출처 메모는 괄호 속을 지우고** 올림.
+- 소스(src/) → 저장소 src/. 단, 문장 원본(c3_essay · c3_iv · c3_q)의 **출처 메모는 괄호 속과 본인 답을 옮긴 말을 지우고** 올림.
   출처 메모에는 서류의 연도·기간 같은 개인 정보가 들어 있어서 공개 저장소에 그대로 두지 않음(표시 이름만 남김: 칸 · 사실0 · 말11/26 …).
   지우기 전의 원본은 작업 폴더와 비공개 미리 보기 카드(src/ 아래 .py.txt)에 있음.
 - 꾸린 뒤 검사: ① 지운 소스로 다시 만든 content.json 이 원본과 같은지(출처 칸만 빼고) ② 넣으면 안 되는 말이 없는지.
@@ -27,7 +27,18 @@ YEAR = re.compile(r"(?:19|20)\d\d[.年]\s?\d")          # 2024.3 · 2020.5~2021.
 YEAR_OK = ("2026-11", "2026-12")                       # 날짜표(시험 날짜)는 괜찮음
 
 
+# 5판(11/28)부터 출처 메모에 본인 답을 그대로 옮겨 적음("답17: …" · "말11/26: …" · "답2에서 — …") → 표시 이름만 남기고 뒤의 말은 지움.
+_LB = r"(?:답[\d/]+|말[\d/·]+|사실\d*|원서\d*|이력서\d*)"
+QUOTE = re.compile(r'"(' + _LB + r"(?:\s?·\s?" + _LB + r')*)(?:에서)?\s?(?::| —)[^"\n]*"')
+
+
 def scrub(text):
+    text, n1 = _scrub_paren(text)
+    text, n2 = QUOTE.subn(r'"\1"', text)
+    return text, n1 + n2
+
+
+def _scrub_paren(text):
     """출처 표시 뒤의 괄호 속을 지움(같은 줄 안에서, 따옴표를 넘지 않는 것만)."""
     out, i, n = [], 0, 0
     while True:
@@ -157,13 +168,13 @@ README = """# sakubun — 분카 작문·면접 드릴
 
 ## 고치는 순서
 
-1. `src/content/c3_*.py` 를 고침 (질문의 순서와 묶음은 `c3_rank.py`)
+1. `src/content/c3_*.py` 를 고침 (질문의 순서와 묶음은 `c3_q.py`)
 2. `python3 src/content/content_src.py --release && python3 src/tools/build.py --strict-audio` → `site/`
 3. 새 음성: `python3 src/tools/tts.py --prune` · 받아쓰기 검사: `python3 src/tools/asr_check.py`
 4. `node src/tests/run.cjs site all` 을 전부 통과한 판만 올림
 5. `python3 src/tools/publish_repo.py <저장소 폴더>` → commit → push
 
-공개 저장소라서 이름·나이·다닌 학교 이름은 어디에도 넣지 않아요. 문장 원본의 출처 메모는 괄호 속(서류의 자세한 내용)을 지운 것이에요.
+공개 저장소라서 이름·나이·다닌 학교 이름은 어디에도 넣지 않아요. 문장 원본의 출처 메모는 자세한 내용(서류의 내용 · 본인이 답한 말)을 지운 것이에요.
 
 획순 그림(`src/kvg`, 사이트의 글자 쓰기 화면): KanjiVG (© Ulrich Apel, CC BY-SA 3.0, kanjivg.tagaini.net)
 """

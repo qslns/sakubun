@@ -120,7 +120,7 @@ def check_text(src_resolved, sid, words, used_words, need_dict=True):
             used_words.setdefault(key, []).append(sid)
 
 
-TTS_SUB = [("COMOLI", "コモリ"), ("JPT", "ジェーピーティー"), ("N2", "エヌに"), ("SNS", "エスエヌエス"), ("AI", "エーアイ"), ("IT", "アイティー"), ("〇〇", "何々")]
+TTS_SUB = [("COMOLI", "コモリ"), ("YOUTH", "ユース"), ("michita", "ミチタ"), ("南山", "ナムサン"), ("生地", "きじ"), ("JPT", "ジェーピーティー"), ("N2", "エヌに"), ("SNS", "エスエヌエス"), ("AI", "エーアイ"), ("IT", "アイティー"), ("〇〇", "何々")]
 
 
 def tts_text(p):

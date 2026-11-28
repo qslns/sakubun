@@ -2,7 +2,7 @@
 (function () {
 "use strict";
 const D = window.DATA;
-const KEY = "sakubun-v1";
+const KEY = "sakubun-v5";   // 5판(11/28): 내용이 통째로 바뀌어서 진도 기록을 새로 시작
 const app = document.getElementById("app");
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const U = {}, W = {}, SE = D.sents;
@@ -46,13 +46,13 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 
 /* ---------- 이름 ---------- */
 function utitle(u) {
-  const c = u.draft ? " (확인 필요)" : "";
+  const c = "";
   if (u.kind === "b") return "블록 " + CIRC[u.no - 1] + " " + u.ko + c;
   if (u.kind === "t") return (u.fr ? "" : "주제 " + u.no + " · ") + u.ko + c;
   if (u.kind === "i") return "면접 · " + u.ko + c;
   return u.ko;
 }
-const stName = st => (st === "pend" ? "답을 기다리는 초안" : "확인 필요");
+const stName = st => (st === "pend" ? "답을 기다리는 초안" : "뜻 확인");
 const kindName = {b: "블록", t: "주제", i: "면접 답", e: "인사·비상"};
 
 /* ---------- 과정: 날짜표(D.days)대로. 밀린 것은 남은 날에 나눠 넣음 ---------- */
@@ -470,7 +470,7 @@ function saRow(sa) {
 }
 const ansHtml = q => q.a.map(a => (a.sa ? saRow(a.sa) : a.s.map(s => sentRow(s, true)).join(""))).join("");
 const catName = c => { const x = (D.qcats || []).filter(y => y[0] === c)[0]; return x ? x[1] : c; };
-const qtags = q => (q.core ? " · 꼭 나오는 질문" : "") + (q.rel === "fu" ? " · 이어지는 질문" : q.rel === "var" ? " · 바꿔 묻는 말" : "") + (q.hard ? " · 압박 질문" : "") + (q.chk ? " · 확인 필요" : "");
+const qtags = q => (q.core ? " · 꼭 나오는 질문" : "") + (q.rel === "fu" ? " · 이어지는 질문" : q.rel === "var" ? " · 바꿔 묻는 말" : "") + (q.hard ? " · 압박 질문" : "") + (q.chk ? " · 뜻 확인" : "");
 const qstat = id => { const r = qrec(id); return r.n ? (r.ok ? "답했음" : "막혔음") : "아직"; };
 function unseenHtml(t) {   // 처음 보는 주제의 모범 글. 밑줄 = 주제에 답하는 두 문장(그 자리에서 짓는 부분)
   if (t.same) return essayHtml(U[t.same]);
@@ -530,7 +530,7 @@ function meterHtml() {
 const factCount = () => Object.keys(SE).filter(k => SE[k].st && !SE[k].ref).length + QS.reduce((n, q) => n + q.a.filter(a => a.sa && a.sa.st).length, 0);
 function factNote() {
   const n = factCount();
-  return n ? '<p class="small" style="margin-top:14px">확인이 필요한 문장이 ' + n + '개 있어요. <a href="#/fact">사실 확인하기</a></p>' : "";
+  return n ? '<p class="small" style="margin-top:14px">내 답을 일본어로 옮긴 문장이 ' + n + '개 있어요. <a href="#/fact">뜻이 내 말과 같은지 보기</a></p>' : "";
 }
 const kindCount = ids => { const c = {}; ids.forEach(id => { const k = U[id].kind; c[k] = (c[k] || 0) + 1; }); return c; };
 function rowText(row) {   // 날짜표 한 줄을 말로
@@ -777,8 +777,8 @@ V.unseen = function (st) {
   const t = UNI[st.n];
   let h = '<p class="eyebrow">처음 보는 주제 · 조립 연습</p><h2 class="ja">' + t.ja + '</h2><p class="ko sub">' + esc(t.ko) + "</p>";
   if (!st.shown) {
-    h += '<ul class="plan3" style="margin-top:18px"><li>1. 준비한 주제 15개 가운데 같은 글로 쓸 수 있는 것이 있는지 먼저 생각해요.</li><li>2. 없으면 만능 작문으로: 첫 문장 → <b>주제에 답하는 문장 두 개를 종이에 지어 쓰기</b> → 연결 문장 → 블록 2개 → 끝 문장. (아무것도 못 짓겠으면 첫 문장 → 블록 ② → ① → ⑤ → 끝 문장)</li>' +
-      "<li>3. 연결 문장은 내 생각을 썼으면 ①, 사실이나 일상을 썼으면 ②. 어느 블록 2개를 쓸지도 정해요.</li><li>주제의 낱말은 시험지를 보고 그대로 옮겨 써도 돼요. 손으로 안 외운 한자는 히라가나로 써도 돼요.</li></ul>";
+    h += '<ul class="plan3" style="margin-top:18px"><li>1. 준비한 주제 ' + D.units.filter(x => x.kind === "t" && !x.fr).length + '개 가운데 같은 글로 쓸 수 있는 것이 있는지 먼저 생각해요.</li><li>2. 없으면 만능 작문으로: 첫 문장 → <b>주제에 답하는 문장 두 개를 종이에 지어 쓰기</b> → 연결 문장 → 블록 2개 → 끝 문장. (아무것도 못 짓겠으면 첫 문장 → 블록 ② → ① → ⑤ → 끝 문장)</li>' +
+      "<li>3. 연결 문장은 내 생각을 썼으면 ①, 사실이나 일상을 썼으면 ②. 어느 블록 2개를 쓸지도 정해요.</li><li>주제의 낱말은 시험지를 보고 그대로 옮겨 써도 돼요. 손으로 안 외운 한자는 히라가나로 써도 돼요.</li><li>명소·추억처럼 패션과 먼 주제는, 주제에 답하는 문장을 서너 개 쓰고 연결 문장 ②로 넘어가요.</li></ul>";
     return {body: h, bar: B("un-show", "정했어요 · 모범 글 보기", "primary")};
   }
   h += '<p class="eyebrow" style="margin-top:20px">이렇게 쓸 수 있어요 · ' + t.n + '자</p><ul class="plan3">' + unseenPlan(t) + (t.tip ? "<li>" + esc(t.tip) + "</li>" : "") + "</ul>" + unseenHtml(t);
@@ -1012,11 +1012,11 @@ function factItems() {
 }
 function showFact() {
   const items = factItems(), fx = S.fx || (S.fx = {});
-  let h = topHome(true) + '<main class="wrap"><h1>사실 확인</h1><p class="lede">Claude가 채워 넣은 말이 들어간 문장 ' + items.length + "개예요. 한국어 뜻을 보고 <b>사실과 다른 것만</b> 누르세요. 다 본 뒤 맨 아래에서 복사해서 대화창에 붙여 주면 고칠게요.</p>";
-  [["chk", "확인 필요 — Claude가 채운 말"], ["pend", "답을 기다리는 초안 — 처음에 보낸 질문에 답하면 바뀌어요"]].forEach(g => {
+  let h = topHome(true) + '<main class="wrap"><h1>뜻 확인</h1><p class="lede">내가 답한 말을 일본어로 옮긴 문장 ' + items.length + "개예요. 한국어 뜻을 보고 <b>내 말과 다른 것만</b> 누르세요. 다 본 뒤 맨 아래에서 복사해서 대화창에 붙여 주면 고칠게요.</p>";
+  [["chk", "내 답에서 옮긴 문장 — 뜻이 내 말과 다르면 누르기"], ["pend", "답을 기다리는 초안"]].forEach(g => {
     const xs = items.filter(x => x.st === g[0]);
     if (!xs.length) return;
-    h += '<h2 class="sec-h">' + g[1] + ' <span class="small">' + xs.length + "개</span></h2>" + xs.map(x => '<button class="fx" data-act="fx" data-id="' + x.id + '" aria-pressed="' + !!fx[x.id] + '"><span class="fxm">' + (fx[x.id] ? "✕ 사실과 다름" : "맞으면 그대로 두기") +
+    h += '<h2 class="sec-h">' + g[1] + ' <span class="small">' + xs.length + "개</span></h2>" + xs.map(x => '<button class="fx" data-act="fx" data-id="' + x.id + '" aria-pressed="' + !!fx[x.id] + '"><span class="fxm">' + (fx[x.id] ? "✕ 내 말과 다름" : "맞으면 그대로 두기") +
       '</span><span class="fxk">' + esc(x.ko) + '</span><span class="fxj ja">' + x.html + '</span><span class="small">' + esc(x.where) + "</span></button>").join("");
   });
   const bad = items.filter(x => fx[x.id]).length;
@@ -1101,12 +1101,12 @@ const ACT = {
     if (fx[id]) delete fx[id]; else fx[id] = 1;
     save();
     el.setAttribute("aria-pressed", !!fx[id]);
-    el.querySelector(".fxm").textContent = fx[id] ? "✕ 사실과 다름" : "맞으면 그대로 두기";
+    el.querySelector(".fxm").textContent = fx[id] ? "✕ 내 말과 다름" : "맞으면 그대로 두기";
     const n = document.getElementById("fxn"); if (n) n.textContent = "다르다고 표시한 것 " + Object.keys(fx).length + "개";
   },
   "fx-copy"() {
     const fx = S.fx || {}, bad = factItems().filter(x => fx[x.id]);
-    const txt = "사실 확인 (판 " + (D.stamp || "") + ") — 다른 것 " + bad.length + "개" + (bad.length ? "\n" + bad.map(x => "· [" + x.id + "] " + x.ko).join("\n") : " (전부 맞음)");
+    const txt = "뜻 확인 (판 " + (D.stamp || "") + ") — 다른 것 " + bad.length + "개" + (bad.length ? "\n" + bad.map(x => "· [" + x.id + "] " + x.ko).join("\n") : " (전부 맞음)");
     const ta = document.getElementById("fxout");
     ta.hidden = false; ta.value = txt; ta.focus(); ta.select();
     try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("복사했어요. 대화창에 붙여 주세요"), () => toast("아래 글을 복사해 주세요")); else toast("아래 글을 복사해 주세요"); } catch (e) { toast("아래 글을 복사해 주세요"); }
